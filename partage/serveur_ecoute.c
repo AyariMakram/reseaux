@@ -9,15 +9,29 @@
 #include <sys/socket.h>
 #include <string.h>
 #include <netdb.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include "interface.h"
 
 /* taille maximale des lignes */
 #define MAXLIGNE 80
 #define CIAO "Au revoir ...\n"
 
-void echo(int f, char* hote, char* port);
-
+//void echo(int f, char* hote, char* port);
+void ext_out();
+void traitement_out(int fd);
 int main(int argc, char *argv[])
 {
+	if (argc!=2) {
+		printf("Usage: %s port\n",argv[0]);
+		exit(1);
+	}
+	fprintf(stderr,"Ecoute sur le port %s\n",argv[1]);
+	ext_out(argv[1]);
+	return EXIT_SUCCESS;
+}
+
+void ext_out(char * port){
   int s,n; /* descripteurs de socket */
   int len,on; /* utilitaires divers */
   struct addrinfo * resol; /* rÃ©solution */
@@ -25,16 +39,8 @@ int main(int argc, char *argv[])
                            PF_INET6,SOCK_STREAM,0, /* IP mode connectÃ© */
                            0,NULL,NULL,NULL};
   struct sockaddr_in6 client; /* adresse de socket du client */
-  char * port; /* Port pour le service */
   int err; /* code d'erreur */
   
-  /* Traitement des arguments */
-  if (argc!=2) { /* erreur de syntaxe */
-    printf("Usage: %s port\n",argv[0]);
-    exit(1);
-  }
-  
-  port=argv[1]; fprintf(stderr,"Ecoute sur le port %s\n",port);
   err = getaddrinfo(NULL,port,&indic,&resol); 
   if (err<0){
     fprintf(stderr,"RÃ©solution: %s\n",gai_strerror(err));
@@ -72,13 +78,13 @@ int main(int argc, char *argv[])
   fprintf(stderr,"listen!\n");
 
   while(1) {
-    /* attendre et gÃ©rer indÃ©finiment les connexions entrantes */
+    /* attendre et gÃ©rer indéfiniment les connexions entrantes */
     len=sizeof(struct sockaddr_in6);
     if( (n=accept(s,(struct sockaddr *)&client,(socklen_t*)&len)) < 0 ) {
       perror("accept");
       exit(7);
     }
-    /* Nom rÃ©seau du client */
+    /* Nom réseau du client */
     char hotec[NI_MAXHOST];  char portc[NI_MAXSERV];
     err = getnameinfo((struct sockaddr*)&client,len,hotec,NI_MAXHOST,portc,NI_MAXSERV,0);
     if (err < 0 ){
@@ -87,48 +93,23 @@ int main(int argc, char *argv[])
       fprintf(stderr,"accept! (%i) ip=%s port=%s\n",n,hotec,portc);
     }
     /* traitement */
-    //echo(n,hotec,portc);
-    write(1, buffer,  sizeof(buffer));
+    traitement_out(n);
   }
-  return EXIT_SUCCESS;
 }
 
-void ext_out(){
+void traitement_out(int fd){
+	ssize_t lu; /* nb d'octets reÃ§us */
+	char tampon[MAXLIGNE+1]; /* tampons pour les communications */ 
 
-
-
-/* echo des messages reÃ§us (le tout via le descripteur f) */
-void echo(int f, char* hote, char* port)
-{
-  ssize_t lu; /* nb d'octets reÃ§us */
-  char msg[MAXLIGNE+1]; /* tampons pour les communications */ 
-  char tampon[MAXLIGNE+1]; 
-  int pid = getpid(); /* pid du processus */
-  int compteur=0;
-  
-  /* message d'accueil */
-  snprintf(msg,MAXLIGNE,"Bonjour %s! (vous utilisez le port %s)\n",hote,port);
-  /* envoi du message d'accueil */
-  send(f,msg,strlen(msg),0);
-  
-  do { /* Faire echo et logguer */
-    lu = recv(f,tampon,MAXLIGNE,0);
-    if (lu > 0 )
-      {
-        compteur++;
-        tampon[lu] = '\0';
-        /* log */
-        fprintf(stderr,"[%s:%s](%i): %3i :%s",hote,port,pid,compteur,tampon);
-        snprintf(msg,MAXLIGNE,"> %s",tampon);
-        /* echo vers le client */
-        send(f, msg, strlen(msg),0);
-      } else {
-        break;
-      }
-  } while ( 1 );
-       
-  /* le correspondant a quittÃ© */
-  send(f,CIAO,strlen(CIAO),0);
-  close(f);
-  fprintf(stderr,"[%s:%s](%i): TerminÃ©.\n",hote,port,pid);
+	while(1){ /* reçoit les données*/
+		lu = recv(fd,tampon,MAXLIGNE,0);
+    		if (lu > 0){
+			tampon[lu] = '\0';
+			/*écrit le contenu sur la sortie standard*/
+			write(1, tampon,  lu);
+		} 
+      		else {
+			break;
+      		}
+	}
 }

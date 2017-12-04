@@ -42,7 +42,8 @@ int tun_alloc(char *dev)
   	return fd;
 }      
 
-void input_tun0_content_into_file(int fd_src, int fd_dst){
+/*En paramètre : fd de tun0 et fd de destination (ex 1)*/
+void get_tun0_content(int fd_src, int fd_dst){
 	char buffer[1024];
 	int bytes_read = read(fd_src, buffer, sizeof(buffer));
 	/*if(bytes_read == 0){
@@ -55,11 +56,10 @@ void input_tun0_content_into_file(int fd_src, int fd_dst){
 		exit(EXIT_FAILURE);
 	}
 	
-	//write(fd_dst, buffer,  sizeof(buffer));
 	write(fd_dst, buffer,  sizeof(buffer));
 }
 
-int main (int argc, char*argv[]){
+/*int main (int argc, char*argv[]){
 	if(argc < 2)
 	{ 
 		perror("Only 1 arg"); 
@@ -78,7 +78,7 @@ int main (int argc, char*argv[]){
 		exit(EXIT_FAILURE);
 	}	
 	while(1){
-		input_tun0_content_into_file(fd_src, fd_dst);
+		get_tun0_content(fd_src, fd_dst);
 	}
 	return 0;
-}
+}*/
